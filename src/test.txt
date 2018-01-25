@@ -1,0 +1,36 @@
+MUL 1, 2, r
+MOVEI v, d
+
+
+Pass:
+
+
+
+label: MOVE s, d ;comments the correct way EOL;
+
+;Comments on one line EOL;
+ADD s, t, d
+INC s
+SUB s, t, d
+DEC S
+
+DIV s, 2, f
+
+BLT y, 6, d
+BGT 5, f, R6
+BR lab
+BEQ s, t, lab
+END
+
+FAIL:
+
+MOVE R9, X
+ADD X,X,Y, t
+SBB R4, R5, total
+BR t, y
+BGT 5, 5, 5
+MOVEI 8, R8
+ADD 123go
+
+
+invalidLabel4: ADD
