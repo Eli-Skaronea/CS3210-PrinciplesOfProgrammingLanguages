@@ -2,18 +2,21 @@ import java.io.*;
 import java.util.*;
 
 public class Main {
-    //Todo get enums working
     //Todo warnings for labels - check with label list
-    //Todo Operands that end in labels (BRANCH)
-    public enum operandType {
-        MEMORY, REGISTER, IMMEDIATE_VALUE, LABEL
-    }
+    //Todo outputLog file - fix format and file name
+    //Todo fix pathing question
+    //Todo count number of each error
+    //Todo Cover letter
+
+
 
     private static BufferedWriter logFile = null;
     private static BufferedReader reader = null;
     public static Map<String, operandRules> opcodeMap = buildOpcodesMap();
     public static ArrayList<Integer> operandListByType = new ArrayList<>();
     public static ArrayList<String> labelList = new ArrayList<>();
+    public static ArrayList<String> labelsCalledList = new ArrayList<>();
+    public static ArrayList<Integer> errorCountByError = new ArrayList<>();
 
 
     public static void main(String[] args) throws IOException {
@@ -22,7 +25,7 @@ public class Main {
         //String malFile = fileGiven + ".mal";
         //fileGiven = fileGiven + ".txt";
 
-        String fileGiven = "C:\\Users\\Eli S\\IdeaProjects\\CS3210__Project1_LogPrinter\\src\\test.txt";
+        String fileGiven = "C:\\Users\\Eli S\\IdeaProjects\\CS3210__Project1_LogPrinter\\src\\GurkaTest1";
 
 
         openFile(fileGiven);
@@ -43,9 +46,6 @@ public class Main {
         try {
             FileReader fileBeingChecked = new FileReader(fileName);
             reader = new BufferedReader(fileBeingChecked);
-//            while ((currentLineRead = reader.readLine()) != null) {
-//                System.out.println(currentLineRead);
-//            }
         } catch (Exception e) {
             System.out.println("Could not find correct file");
         }
@@ -69,6 +69,7 @@ public class Main {
      */
     private static void readFile(BufferedReader currentFile, BufferedWriter logFile) throws IOException {
         String currentLine = null;
+        int numberOfErrors = 0;
         int lineNumber = 1;
         ArrayList<Character> lettersInCurrentLine = new ArrayList<>();
 
@@ -78,22 +79,12 @@ public class Main {
                 currentLine = removeCommentFromLine(currentLine);
             }
             lettersInCurrentLine.clear();
+            currentLine = currentLine.trim();
             int start = 0;
             int end = 0;
             int counter = 0;
             ArrayList<String> currentLineWordByWord = new ArrayList<>();
 
-            //= currentLine.split(" ");
-//            int start = 0;
-//            int end = 0;
-//            for(int i = 0; i <currentLine.length(); i++){
-//                Character c = currentLine.charAt(i);
-//                end = i;
-//                if(c == 32){
-//                    currentLineWordByWord.add(currentLine.substring(start, end));
-//                    start = end + 1;
-//                }
-//            }
 
             //Check line for errors - return the error message if there is one.
             if (!currentLine.isEmpty()) {
@@ -101,20 +92,18 @@ public class Main {
                     Character letter = currentLine.charAt(i);
                     if (letter.equals(' ')) {
                         end = i;
-                        currentLineWordByWord.add(currentLine.substring(start, end));
-                        counter++;
-                        start = end;
+                        if(!currentLine.substring(start, end).equals(" ")) {
+                            currentLineWordByWord.add(currentLine.substring(start, end));
+                            counter++;
+                            start = end;
+                        } else{
+                            start = i;
+                        }
                     }
-//                    else if (!Character.isLetter(letter) && !Character.isDigit(letter)) {
-//                        end = i - 1;
-//                        currentLineWordByWord[counter] = currentLine.substring(start, end);
-//                        counter++;
-//                        start = end;
-//                    }
 
                 }
                 currentLineWordByWord.add(currentLine.substring(start, currentLine.length()));
-                for(int i = 0; i < counter; i++){
+                for (int i = 0; i < counter; i++) {
                     currentLineWordByWord.get(i).trim();
                 }
                 errorMessage = runErrorCheck(currentLineWordByWord);
@@ -124,7 +113,6 @@ public class Main {
                 lineNumber++;
             }
             //Write the line to the output file if errorMessage contains characters, output them
-
             if (!errorMessage.isEmpty()) {
                 logFile.write(errorMessage + '\n');
                 System.out.println(errorMessage);
@@ -132,11 +120,23 @@ public class Main {
 
 
         }
+        logFile.write('\n');
+        outputWarnings();
 
     }
 
-    //Todo finish label process
-    private static String runErrorCheck(ArrayList<String> currentLineWordByWord) {
+    //Todo finish
+    private static void outputWarnings() {
+        for(int i = 0; i < labelsCalledList.size(); i++){
+            String calledLabel = labelsCalledList.get(i);
+            if(!labelList.contains(calledLabel)){
+                System.out.println("WARNING: " + calledLabel + " called and not defined or defined and never used");
+                labelList.add(calledLabel);
+            }
+        }
+    }
+
+    private static String runErrorCheck(ArrayList<String> currentLineWordByWord) throws IOException {
         String errorMessage = "";
         boolean hasLabel = false;
         boolean validLabel = false;
@@ -144,26 +144,7 @@ public class Main {
             hasLabel = true;
             validLabel = validLabelOpcode(currentLineWordByWord.get(0));
         }
-//        int lastLabelWord = -1;
-//        for (int i = 0; i < currentLineWordByWord.length; i++) {
-//            if (currentLineWordByWord[i].endsWith(":")) {
-//                lastLabelWord = i;
-//            }
-//        }
-//        //Line only contains a label and no opcodes/operands
-//        if (lastLabelWord == currentLineWordByWord.length - 1) {
-//            return errorMessage;
-//        }
-//        if (lastLabelWord > -1) {
-//            StringBuilder labelName = new StringBuilder(currentLineWordByWord[0]);
-//            if (lastLabelWord > 0) {
-//                for (int i = 1; i <= lastLabelWord; i++) {
-//                    labelName.append(currentLineWordByWord[i]);
-//                }
-//            }
 
-//            validLabel = validLabelOpcode(labelName.toString());
-//        }
         if (hasLabel == true) {
             updateLabelList(currentLineWordByWord.get(0));
             if (!validLabel) {
@@ -203,13 +184,7 @@ public class Main {
      * @param label - label to be added
      */
     private static void updateLabelList(String label) {
-        if (labelList.contains(label)) {
-            labelList.remove(label);
-            label = label + "Valid";
-            labelList.add(label);
-        } else {
-            labelList.add(label);
-        }
+        labelList.add(label);
     }
 
     /**
@@ -224,7 +199,7 @@ public class Main {
         int j = 0;
         for (int i = 0; i < currentLineWordByWord.size(); i++) {
             if (i > lastLabelIndex) {
-                newLine.add(currentLineWordByWord.get(i));
+                newLine.add(currentLineWordByWord.get(i).trim());
                 j++;
             }
         }
@@ -238,7 +213,7 @@ public class Main {
      * @param currentLineWordByWord
      * @return
      */
-    private static String checkIfValidOpcode(ArrayList<String> currentLineWordByWord) {
+    private static String checkIfValidOpcode(ArrayList<String> currentLineWordByWord) throws IOException {
         ArrayList<Character> currentLineLetterByLetter = new ArrayList<>();
         ArrayList<String> listOfOperands = new ArrayList<>();
         String errorMessage = "";
@@ -281,11 +256,20 @@ public class Main {
         if (!listOfOperands.get(0).equals("")) {
             errorMessage = validateOperands(listOfOperands, opcode);
         }
+
         if (errorMessage.isEmpty()) {
             operandRules opcodeRules = opcodeMap.get(opcode);
             if (opcode.equals("END") && !operandListByType.isEmpty()) {
                 errorMessage = "END Opcode has no operands";
                 return errorMessage;
+            } else if (opcode.equals("END")) {
+                boolean endOfProgram = endOfProgram();
+                if (endOfProgram) {
+                    return errorMessage;
+                } else {
+                    errorMessage = "END must be the last opcode given in the program";
+                    return errorMessage;
+                }
             }
             if (opcodeRules.operandTypes.size() != operandListByType.size()) {
                 errorMessage = "Incorrect amount of operands for opcode: " + opcode +
@@ -302,6 +286,18 @@ public class Main {
 
         }
         return errorMessage;
+    }
+    //Todo Gurka test 3 crashes on end when some spaces added at end?
+    private static boolean endOfProgram() throws IOException {
+        boolean end = true;
+        while ((reader.readLine()) != null) {
+            if (!reader.readLine().isEmpty()) {
+                end = false;
+                return end;
+            }
+        }
+
+        return end;
     }
 
     /**
@@ -328,14 +324,34 @@ public class Main {
                 }
             }
 
-            //Todo fix this - Check if it is a label
+            //Todo check if labelList has warnings - refactor to own method
             else if (opcode.startsWith("B")) {
-                errorMessage = validateLabelOperand(operand, opcode, i);
-                if (!errorMessage.isEmpty()) {
-                    return errorMessage;
+                if (opcode.equals("BR") || i == 2) {
+                    errorMessage = validateMemoryOperand(operand);
+                    if (!errorMessage.isEmpty()) {
+                        return errorMessage;
+                    } else {
+                        updateListOfLabelsCalled(operand + ":");
+                        updateListOfOperands(3);
+
+                    }
+
+                } else if (operand.startsWith("R") && Character.isDigit(operand.charAt(1))) {
+                    errorMessage = validateRegisterOperand(operand);
+                    if (!errorMessage.isEmpty()) {
+                        return errorMessage;
+                    } else {
+                        updateListOfOperands(1);
+                    }
                 } else {
-                    updateListOfOperands(3);
+                    errorMessage = validateMemoryOperand(operand);
+                    if (!errorMessage.isEmpty()) {
+                        return errorMessage;
+                    } else {
+                        updateListOfOperands(0);
+                    }
                 }
+
             }
 
             //If operand starts with an 'R' and second character is a number may be a register
@@ -353,6 +369,23 @@ public class Main {
                 if (operand.endsWith(",")) {
                     operand = operand.substring(0, operand.length() - 1);
                 }
+                if (opcode.startsWith("B")) {
+                    if (opcode.equals("BR")) {
+                        errorMessage = validateMemoryOperand(operand);
+                        if (!errorMessage.isEmpty()) {
+                            return errorMessage;
+                        } else {
+                            updateListOfOperands(3);
+                        }
+                    } else if (i == 3) {
+                        errorMessage = validateMemoryOperand(operand);
+                        if (!errorMessage.isEmpty()) {
+                            return errorMessage;
+                        } else {
+                            updateListOfOperands(3);
+                        }
+                    }
+                }
                 if (operand.charAt(0) < 65 && operand.charAt(0) > 122) {
                     errorMessage = "Invalid Operand " + i + 1 + ": Operand must start with a letter";
                     return errorMessage;
@@ -363,9 +396,7 @@ public class Main {
                 } else {
                     updateListOfOperands(0);
                 }
-            }
-
-            else {
+            } else {
                 errorMessage = "Operand " + i + " is to long. Memory locations can only be 5 characters long. Check for " +
                         "missing comma";
                 return errorMessage;
@@ -375,20 +406,8 @@ public class Main {
         return errorMessage;
     }
 
-    //Todo Finish Method - Are labels unique from memory locations?
-    private static String validateLabelOperand(String operand, String opcode, int i) {
-        String errorMessage = "";
-        if (opcode.equals("BR") && i == 1) {
-            if (!validLabelOpcode(operand)) {
-                errorMessage = "Labels cannot contain numbers";
-            }
-            return errorMessage;
-        } else if (i != 3) {
-            errorMessage = "Label in the wrong operand";
-            return errorMessage;
-        }
-
-        return errorMessage;
+    private static void updateListOfLabelsCalled(String label) {
+        labelsCalledList.add(label);
     }
 
     /**
@@ -454,30 +473,29 @@ public class Main {
      *
      * @param currentLine - current line
      */
-
     private static String removeCommentFromLine(String currentLine) {
         ArrayList<Character> lettersInCurrentLine = new ArrayList<>();
         for (int i = 0; i < currentLine.length(); i++) {
             lettersInCurrentLine.add(currentLine.charAt(i));
         }
         int indexWhereCommentBegins = 0;
-        int indexWhereCommentEnds = 0;
+        //int indexWhereCommentEnds = 0;
 
         for (int i = 0; i < lettersInCurrentLine.size(); i++) {
             if (lettersInCurrentLine.get(i) == ';') {
                 indexWhereCommentBegins = i;
-                for (int j = i + 1; j < lettersInCurrentLine.size(); j++) {
-                    if (lettersInCurrentLine.get(j) == ';') {
-                        indexWhereCommentEnds = j + 1;
-                        break;
-                    } else {
-                        indexWhereCommentEnds = lettersInCurrentLine.size();
-                    }
-                }
+
+//                for (int j = i + 1; j < lettersInCurrentLine.size(); j++) {
+//                    if (lettersInCurrentLine.get(j) == ';') {
+//                        indexWhereCommentEnds = j + 1;
+//                        break;
+//                    } else {
+//                        indexWhereCommentEnds = lettersInCurrentLine.size();
+//                    }
                 break;
+                }
             }
-        }
-        lettersInCurrentLine.subList(indexWhereCommentBegins, indexWhereCommentEnds).clear();
+        lettersInCurrentLine.subList(indexWhereCommentBegins, lettersInCurrentLine.size()).clear();
         return buildString(lettersInCurrentLine);
     }
 
@@ -489,15 +507,6 @@ public class Main {
         String builtString = result.toString();
         return builtString;
     }
-
-//    private static String buildString(String[] listOfStrings) {
-//        StringBuilder result = new StringBuilder(listOfStrings.length);
-//        for (String s : listOfStrings) {
-//            result.append(s);
-//        }
-//        String builtString = result.toString();
-//        return builtString;
-//    }
 
 
     public static class operandRules {
