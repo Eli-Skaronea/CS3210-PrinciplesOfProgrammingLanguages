@@ -7,6 +7,8 @@ public class Main {
     //Todo fix pathing question
     //Todo count number of each error
     //Todo Cover letter
+    //Todo return all error messages -EXTRA CREDIT
+    //Todo refactor
 
 
 
@@ -17,6 +19,7 @@ public class Main {
     public static ArrayList<String> labelList = new ArrayList<>();
     public static ArrayList<String> labelsCalledList = new ArrayList<>();
     public static ArrayList<Integer> errorCountByError = new ArrayList<>();
+    public static String errorMessage = "";
 
 
     public static void main(String[] args) throws IOException {
@@ -25,7 +28,7 @@ public class Main {
         //String malFile = fileGiven + ".mal";
         //fileGiven = fileGiven + ".txt";
 
-        String fileGiven = "C:\\Users\\Eli S\\IdeaProjects\\CS3210__Project1_LogPrinter\\src\\GurkaTest1";
+        String fileGiven = "C:\\Users\\Eli S\\IdeaProjects\\CS3210__Project1_LogPrinter\\src\\test.txt";
 
 
         openFile(fileGiven);
@@ -74,40 +77,22 @@ public class Main {
         ArrayList<Character> lettersInCurrentLine = new ArrayList<>();
 
         while ((currentLine = currentFile.readLine()) != null) {
-            String errorMessage = "";
+            errorMessage = "";
+            ArrayList<String> currentLineWordByWord = new ArrayList<>();
+            lettersInCurrentLine.clear();
+
             if (currentLine.contains(";")) {
                 currentLine = removeCommentFromLine(currentLine);
             }
-            lettersInCurrentLine.clear();
+
             currentLine = currentLine.trim();
-            int start = 0;
-            int end = 0;
-            int counter = 0;
-            ArrayList<String> currentLineWordByWord = new ArrayList<>();
 
 
-            //Check line for errors - return the error message if there is one.
             if (!currentLine.isEmpty()) {
-                for (int i = 0; i < currentLine.length(); i++) {
-                    Character letter = currentLine.charAt(i);
-                    if (letter.equals(' ')) {
-                        end = i;
-                        if(!currentLine.substring(start, end).equals(" ")) {
-                            currentLineWordByWord.add(currentLine.substring(start, end));
-                            counter++;
-                            start = end;
-                        } else{
-                            start = i;
-                        }
-                    }
-
-                }
-                currentLineWordByWord.add(currentLine.substring(start, currentLine.length()));
-                for (int i = 0; i < counter; i++) {
-                    currentLineWordByWord.get(i).trim();
-                }
-                errorMessage = runErrorCheck(currentLineWordByWord);
                 operandListByType.clear();
+                currentLineWordByWord = splitCurrentLine(currentLine);
+                errorMessage = runErrorCheck(currentLineWordByWord, currentLine);
+
                 logFile.write(lineNumber + " " + currentLine + '\n');
                 System.out.println(lineNumber + " " + currentLine);
                 lineNumber++;
@@ -116,16 +101,63 @@ public class Main {
             if (!errorMessage.isEmpty()) {
                 logFile.write(errorMessage + '\n');
                 System.out.println(errorMessage);
+                numberOfErrors++;
             }
-
-
         }
         logFile.write('\n');
         outputWarnings();
+        outputErrorReport(numberOfErrors);
+    }
+
+    /**
+     * My personal split method to split into an array of strings
+     * @param currentLine - the current line be read by reader
+     * @return - The current line word by word
+     */
+    private static ArrayList<String> splitCurrentLine(String currentLine) {
+        int start = 0;
+        int end;
+        int counter = 0;
+        ArrayList<String> currentLineWordByWord = new ArrayList<>();
+        for (int i = 0; i < currentLine.length(); i++) {
+            Character letter = currentLine.charAt(i);
+            if (letter.equals(' ')) {
+                end = i;
+                if(!currentLine.substring(start, end).equals(" ")) {
+                    currentLineWordByWord.add(currentLine.substring(start, end));
+                    counter++;
+                    start = end;
+                } else{
+                    start = i;
+                }
+            }
+
+        }
+
+        currentLineWordByWord.add(currentLine.substring(start, currentLine.length()));
+        for (int i = 0; i < counter; i++) {
+            currentLineWordByWord.get(i).trim();
+        }
+
+        return currentLineWordByWord;
 
     }
 
-    //Todo finish
+    //Todo number of each error
+    private static void outputErrorReport(int numberOfErrors) throws IOException {
+        logFile.write("------------" + '\n');
+        logFile.write(numberOfErrors + " Errors found" + '\n');
+        logFile.write("Processing complete – ");
+        if(numberOfErrors != 0){
+            logFile.write("MAL program is not valid");
+        }
+        else{
+            logFile.write("MAL program is valid");
+        }
+    }
+
+
+    //Todo test method
     private static void outputWarnings() {
         for(int i = 0; i < labelsCalledList.size(); i++){
             String calledLabel = labelsCalledList.get(i);
@@ -136,14 +168,13 @@ public class Main {
         }
     }
 
-    private static String runErrorCheck(ArrayList<String> currentLineWordByWord) throws IOException {
-        String errorMessage = "";
-        boolean hasLabel = false;
-        boolean validLabel = false;
-        if (currentLineWordByWord.get(0).contains(":")) {
-            hasLabel = true;
-            validLabel = validLabelOpcode(currentLineWordByWord.get(0));
-        }
+
+
+    private static String runErrorCheck(ArrayList<String> currentLineWordByWord, String currentLine) throws IOException {
+
+
+        boolean hasLabel = checkForLabel(currentLineWordByWord.get(0));
+        boolean validLabel = validLabelOpcode(currentLineWordByWord.get(0));
 
         if (hasLabel == true) {
             updateLabelList(currentLineWordByWord.get(0));
@@ -152,60 +183,21 @@ public class Main {
                 return errorMessage;
             }
             currentLineWordByWord = removeLabel(currentLineWordByWord, 0);
+            StringBuilder currentLineBuilder = new StringBuilder();
+            for(int i = 0; i <currentLineWordByWord.size(); i++){
+                currentLineBuilder.append(currentLineWordByWord.get(i));
+            }
+            currentLine = currentLineBuilder.toString();
         }
 
         if (!currentLineWordByWord.isEmpty()) {
-            errorMessage = checkIfValidOpcode(currentLineWordByWord);
+            errorMessage = checkIfValidOpcode(currentLineWordByWord, currentLine);
 
         }
         return errorMessage;
     }
 
-    /**
-     * Label should only be letters
-     *
-     * @param label - Every string before the first ":"
-     * @return true if label is invalid
-     */
-    private static boolean validLabelOpcode(String label) {
 
-        for (int i = 0; i < label.length(); i++) {
-            Character letter = label.charAt(i);
-            if (Character.isDigit(letter)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Add the label to running labelList
-     *
-     * @param label - label to be added
-     */
-    private static void updateLabelList(String label) {
-        labelList.add(label);
-    }
-
-    /**
-     * Removes the lable from the current line - leaving only MAL code
-     *
-     * @param currentLineWordByWord - current line in array fo strings
-     * @param lastLabelIndex        - where the last label is located in CurrentLineWordByWord array
-     * @return - new line without labels
-     */
-    private static ArrayList<String> removeLabel(ArrayList<String> currentLineWordByWord, int lastLabelIndex) {
-        ArrayList<String> newLine = new ArrayList<>();
-        int j = 0;
-        for (int i = 0; i < currentLineWordByWord.size(); i++) {
-            if (i > lastLabelIndex) {
-                newLine.add(currentLineWordByWord.get(i).trim());
-                j++;
-            }
-        }
-
-        return newLine;
-    }
 
     /**
      * Checks if the opcode is valid - cannot start with a number
@@ -213,26 +205,64 @@ public class Main {
      * @param currentLineWordByWord
      * @return
      */
-    private static String checkIfValidOpcode(ArrayList<String> currentLineWordByWord) throws IOException {
-        ArrayList<Character> currentLineLetterByLetter = new ArrayList<>();
-        ArrayList<String> listOfOperands = new ArrayList<>();
-        String errorMessage = "";
-        String currentLine = String.join("", currentLineWordByWord);
+    private static String checkIfValidOpcode(ArrayList<String> currentLineWordByWord, String currentLine) throws IOException {
+        ArrayList<String> listOfOperands;
+        listOfOperands = new ArrayList<>();
         String opcode = currentLineWordByWord.get(0).toUpperCase();
         opcode = opcode.trim();
-
-        if (!opcodeMap.containsKey(opcode)) {
-            errorMessage = "Invalid opcode: " + opcode + " is not a valid opcode";
+        errorMessage = validateOpcode(opcode);
+        if(!errorMessage.isEmpty()){
             return errorMessage;
         }
 
-        if (opcode.charAt(0) < 65 || opcode.charAt(0) > 122) {
-            errorMessage = "Opcode cannot start with a number";
+        listOfOperands = buildListOfOperands(currentLine, opcode);
+
+        if (operandListByType.size() > 3) {
+            errorMessage = "Max operands is 3";
             return errorMessage;
         }
 
-        //Parse the line into an array of strings by commas - if ';' is read then it begins a comment and means no more
-        //operands
+        if (!listOfOperands.get(0).equals("")) {
+            errorMessage = validateOperands(listOfOperands, opcode);
+        }
+
+        if (errorMessage.isEmpty()) {
+            errorMessage = validateOperandsMatchOpcodes(opcode);
+        }
+        return errorMessage;
+    }
+
+    private static String validateOperandsMatchOpcodes(String opcode) throws IOException {
+        operandRules opcodeRules = opcodeMap.get(opcode);
+//        if (opcode.equals("END") && !operandListByType.isEmpty()) {
+//            errorMessage = "END Opcode has no operands";
+//            return errorMessage;
+//        } else if (opcode.equals("END")) {
+//            boolean endOfProgram = endOfProgram();
+//            if (endOfProgram) {
+//                return errorMessage;
+//            } else {
+//                errorMessage = "END must be the last opcode given in the program";
+//                return errorMessage;
+//            }
+//        }
+        if (opcodeRules.operandTypes.size() != operandListByType.size()) {
+            errorMessage = "Incorrect amount of operands for opcode: " + opcode +
+                    " expects " + opcodeRules.operandTypes.size() + " operands.";
+            return errorMessage;
+        }
+        for (int i = 0; i < operandListByType.size(); i++) {
+            if (!opcodeRules.operandTypes.get(i).contains(operandListByType.get(i))) {
+                errorMessage = "Incorrect operand for opcode";
+                return errorMessage;
+            }
+        }
+        return errorMessage;
+    }
+
+    private static ArrayList<String> buildListOfOperands(String currentLine, String opcode) {
+        ArrayList<Character> currentLineLetterByLetter = new ArrayList<>();
+        ArrayList<String> listOfOperands = new ArrayList<>();
         for (int i = opcode.length(); i < currentLine.length(); i++) {
             currentLineLetterByLetter.add(currentLine.charAt(i));
         }
@@ -248,54 +278,32 @@ public class Main {
         listOfOperands.add(buildString(operandLetters));
         operandLetters.clear();
 
-        if (operandListByType.size() > 3) {
-            errorMessage = "Max operands is 3";
+        return listOfOperands;
+    }
+
+    private static String validateOpcode(String opcode) {
+        if (!opcodeMap.containsKey(opcode)) {
+            errorMessage = "Invalid opcode: " + opcode + " is not a valid opcode";
             return errorMessage;
         }
 
-        if (!listOfOperands.get(0).equals("")) {
-            errorMessage = validateOperands(listOfOperands, opcode);
+        if (opcode.charAt(0) < 65 || opcode.charAt(0) > 122) {
+            errorMessage = "Opcode cannot start with a number";
+            return errorMessage;
         }
 
-        if (errorMessage.isEmpty()) {
-            operandRules opcodeRules = opcodeMap.get(opcode);
-            if (opcode.equals("END") && !operandListByType.isEmpty()) {
-                errorMessage = "END Opcode has no operands";
-                return errorMessage;
-            } else if (opcode.equals("END")) {
-                boolean endOfProgram = endOfProgram();
-                if (endOfProgram) {
-                    return errorMessage;
-                } else {
-                    errorMessage = "END must be the last opcode given in the program";
-                    return errorMessage;
-                }
-            }
-            if (opcodeRules.operandTypes.size() != operandListByType.size()) {
-                errorMessage = "Incorrect amount of operands for opcode: " + opcode +
-                        " expects " + opcodeRules.operandTypes.size() + " operands.";
-                return errorMessage;
-            }
-            for (int i = 0; i < operandListByType.size(); i++) {
-                if (!opcodeRules.operandTypes.get(i).contains(operandListByType.get(i))) {
-                    errorMessage = "Incorrect operand for opcode";
-                    return errorMessage;
-                }
-            }
-
-
-        }
         return errorMessage;
     }
+
     //Todo Gurka test 3 crashes on end when some spaces added at end?
     private static boolean endOfProgram() throws IOException {
         boolean end = true;
-        while ((reader.readLine()) != null) {
-            if (!reader.readLine().isEmpty()) {
-                end = false;
-                return end;
-            }
-        }
+//        while ((reader.readLine()) != null) {
+//            if (!reader.readLine().isEmpty()) {
+//                end = false;
+//                return end;
+//            }
+//        }
 
         return end;
     }
@@ -307,7 +315,6 @@ public class Main {
      * @return - error message if one found, otherwise returns an empty string.
      */
     private static String validateOperands(ArrayList<String> listOfOperands, String opcode) {
-        String errorMessage = "";
 
         //run through the list of operands and check if it's legal
         for (int i = 0; i < listOfOperands.size(); i++) {
@@ -324,17 +331,9 @@ public class Main {
                 }
             }
 
-            //Todo check if labelList has warnings - refactor to own method
             else if (opcode.startsWith("B")) {
                 if (opcode.equals("BR") || i == 2) {
-                    errorMessage = validateMemoryOperand(operand);
-                    if (!errorMessage.isEmpty()) {
-                        return errorMessage;
-                    } else {
-                        updateListOfLabelsCalled(operand + ":");
-                        updateListOfOperands(3);
-
-                    }
+                    validateCalledLabel(operand);
 
                 } else if (operand.startsWith("R") && Character.isDigit(operand.charAt(1))) {
                     errorMessage = validateRegisterOperand(operand);
@@ -369,23 +368,23 @@ public class Main {
                 if (operand.endsWith(",")) {
                     operand = operand.substring(0, operand.length() - 1);
                 }
-                if (opcode.startsWith("B")) {
-                    if (opcode.equals("BR")) {
-                        errorMessage = validateMemoryOperand(operand);
-                        if (!errorMessage.isEmpty()) {
-                            return errorMessage;
-                        } else {
-                            updateListOfOperands(3);
-                        }
-                    } else if (i == 3) {
-                        errorMessage = validateMemoryOperand(operand);
-                        if (!errorMessage.isEmpty()) {
-                            return errorMessage;
-                        } else {
-                            updateListOfOperands(3);
-                        }
-                    }
-                }
+//                if (opcode.startsWith("B")) {
+//                    if (opcode.equals("BR")) {
+//                        errorMessage = validateMemoryOperand(operand);
+//                        if (!errorMessage.isEmpty()) {
+//                            return errorMessage;
+//                        } else {
+//                            updateListOfOperands(3);
+//                        }
+//                    } else if (i == 3) {
+//                        errorMessage = validateMemoryOperand(operand);
+//                        if (!errorMessage.isEmpty()) {
+//                            return errorMessage;
+//                        } else {
+//                            updateListOfOperands(3);
+//                        }
+//                    }
+//                }
                 if (operand.charAt(0) < 65 && operand.charAt(0) > 122) {
                     errorMessage = "Invalid Operand " + i + 1 + ": Operand must start with a letter";
                     return errorMessage;
@@ -406,6 +405,19 @@ public class Main {
         return errorMessage;
     }
 
+    private static String validateCalledLabel(String operand) {
+        errorMessage = validateMemoryOperand(operand);
+        if (!errorMessage.isEmpty()) {
+            errorMessage = "The third operand must be a label (valid memory location)";
+            return errorMessage;
+        } else {
+            updateListOfLabelsCalled(operand + ":");
+            updateListOfOperands(3);
+
+        }
+        return errorMessage;
+    }
+
     private static void updateListOfLabelsCalled(String label) {
         labelsCalledList.add(label);
     }
@@ -417,7 +429,6 @@ public class Main {
      * @return - error message if one found
      */
     private static String validateImmediateValueOperand(String operand) {
-        String errorMessage = "";
         if (operand.endsWith(",")) {
             operand = operand.substring(0, operand.length() - 1);
         }
@@ -437,7 +448,6 @@ public class Main {
     }
 
     private static String validateRegisterOperand(String operand) {
-        String errorMessage = "";
         if (operand.length() == 2 && (operand.charAt(1) < 48 || operand.charAt(1) > 55)) {
             errorMessage = "Invalid register number (0-7)";
             return errorMessage;
@@ -447,7 +457,6 @@ public class Main {
     }
 
     private static String validateMemoryOperand(String operand) {
-        String errorMessage = "";
         for (int i = 0; i < operand.length(); i++) {
             char letter = operand.charAt(i);
             if (Character.isDigit(letter)) {
@@ -479,19 +488,10 @@ public class Main {
             lettersInCurrentLine.add(currentLine.charAt(i));
         }
         int indexWhereCommentBegins = 0;
-        //int indexWhereCommentEnds = 0;
 
         for (int i = 0; i < lettersInCurrentLine.size(); i++) {
             if (lettersInCurrentLine.get(i) == ';') {
                 indexWhereCommentBegins = i;
-
-//                for (int j = i + 1; j < lettersInCurrentLine.size(); j++) {
-//                    if (lettersInCurrentLine.get(j) == ';') {
-//                        indexWhereCommentEnds = j + 1;
-//                        break;
-//                    } else {
-//                        indexWhereCommentEnds = lettersInCurrentLine.size();
-//                    }
                 break;
                 }
             }
@@ -510,14 +510,11 @@ public class Main {
 
 
     public static class operandRules {
-        int numOfOperands;
         ArrayList<ArrayList<Integer>> operandTypes;
 
         public operandRules(ArrayList<ArrayList<Integer>> validOperandTypes) {
             operandTypes = validOperandTypes;
         }
-
-
     }
 
     /**
@@ -604,5 +601,58 @@ public class Main {
 
         return createdArray;
 
+    }
+
+    private static boolean checkForLabel(String firstWord) {
+        boolean hasLabel = false;
+        if (firstWord.contains(":")) {
+            hasLabel = true;
+        }
+        return hasLabel;
+    }
+
+    /**
+     * Label should only be letters
+     *
+     * @param label - Every string before the first ":"
+     * @return true if label is invalid
+     */
+    private static boolean validLabelOpcode(String label) {
+        for (int i = 0; i < label.length(); i++) {
+            Character letter = label.charAt(i);
+            if (Character.isDigit(letter)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Add the label to running labelList
+     *
+     * @param label - label to be added
+     */
+    private static void updateLabelList(String label) {
+        labelList.add(label);
+    }
+
+    /**
+     * Removes the lable from the current line - leaving only MAL code
+     *
+     * @param currentLineWordByWord - current line in array fo strings
+     * @param lastLabelIndex        - where the last label is located in CurrentLineWordByWord array
+     * @return - new line without labels
+     */
+    private static ArrayList<String> removeLabel(ArrayList<String> currentLineWordByWord, int lastLabelIndex) {
+        ArrayList<String> newLine = new ArrayList<>();
+        int j = 0;
+        for (int i = 0; i < currentLineWordByWord.size(); i++) {
+            if (i > lastLabelIndex) {
+                newLine.add(currentLineWordByWord.get(i).trim());
+                j++;
+            }
+        }
+
+        return newLine;
     }
 }
